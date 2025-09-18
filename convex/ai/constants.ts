@@ -22,6 +22,13 @@ Do not assume global knowledge; prefer citations from sources.
 - Prefer paraphrasing, but use brief quotes for high-impact statements.
 - Note contradictions between sources if present.
 
+## Output Formatting
+- Default to Markdown for all drafts (use # for title, then ##/### for sections).
+- Start with a single H1 title line.
+- Use bullet and numbered lists where appropriate.
+- Do not include any preamble, system notes, or tool logs.
+- Return only the final article Markdown (no code fences).
+
 ## Evidence & Citations
 - After using searchTool, cite sources inline with [Source Title] or [URL] when referencing facts.
 - If a claim cannot be supported by sources, either omit it or clearly mark it as assumption and ask for confirmation.

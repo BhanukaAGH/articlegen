@@ -1,6 +1,9 @@
 import { ConvexError, v } from 'convex/values'
-import { mutation, query } from './_generated/server'
+import { action, internalAction, mutation, query } from './_generated/server'
 import { paginationOptsValidator } from 'convex/server'
+import { articleAgent } from './ai/agents/articleAgent'
+import { stepCountIs } from '@convex-dev/agent'
+import { api, internal } from './_generated/api'
 
 export const create = mutation({
   args: {},
@@ -107,7 +110,33 @@ export const list = query({
   },
 })
 
-export const generateArticle = mutation({
+export const updateArticle = mutation({
+  args: {
+    articleId: v.id('articles'),
+    settings: v.object({
+      length: v.string(),
+      tone: v.string(),
+      angle: v.string(),
+      customPrompt: v.optional(v.string()),
+    }),
+    generatedContent: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity()
+
+    if (!identity) {
+      throw new ConvexError('Unauthorized')
+    }
+
+    await ctx.db.patch(args.articleId, {
+      settings: args.settings,
+      generatedContent: args.generatedContent,
+      status: 'completed' as const,
+    })
+  },
+})
+
+export const generateArticle = action({
   args: {
     articleId: v.id('articles'),
     keyPoints: v.string(),
@@ -119,23 +148,14 @@ export const generateArticle = mutation({
     }),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.auth.getUserIdentity()
+    const identity = await ctx.auth.getUserIdentity()
 
-    if (!user) {
-      throw new ConvexError('Unauthorized')
-    }
-
-    const article = await ctx.db.get(args.articleId)
-    if (!article) {
-      throw new ConvexError('Article not found')
-    }
-
-    if (article.userId !== user.subject) {
+    if (!identity) {
       throw new ConvexError('Unauthorized')
     }
 
     // Get article settings
-    const { length, tone, angle } = article.settings
+    const { length, tone, angle } = args.settings
 
     // Define length parameters
     const lengthGuides = {
@@ -144,37 +164,44 @@ export const generateArticle = mutation({
       long: '2000-3000 words',
     }
 
-    // Construct the base prompt
-    const basePrompt = `You are an expert article writer with deep knowledge in creating engaging and informative content.
-    
-Task: Generate a ${lengthGuides[length as keyof typeof lengthGuides]} article using the following key points and parameters:
+    // Construct a concise, user-style prompt. Require Markdown-only output.
+    const basePrompt = `Write a ${lengthGuides[length as keyof typeof lengthGuides]} article in Markdown using the key points below and the specified parameters.
 
-Key Points:
+- Start with a single H1 title line.
+- Use clear sections with H2/H3 headings as appropriate.
+- Maintain a ${tone} tone (${getToneGuide(tone as string)}).
+- Follow the ${angle} approach (${getAngleGuide(angle as string)}).
+- Integrate all key points with smooth transitions.
+- End with a concise conclusion or call-to-action.
+- Return only the final article in Markdown. Do not include any preamble, system messages, or code fences.
+
+Key points:
 ${args.keyPoints}
 
-Writing Parameters:
-- Tone: ${tone} - ${getToneGuide(tone as string)}
-- Angle: ${angle} - ${getAngleGuide(angle as string)}
-- Length: Target ${lengthGuides[length as keyof typeof lengthGuides]}
+Additional parameters:
+- Target length: ${lengthGuides[length as keyof typeof lengthGuides]}
+- Tone: ${tone}
+- Angle: ${angle}
 
-Requirements:
-1. Maintain a ${tone} tone throughout the article
-2. Structure the article following the ${angle} approach
-3. Include relevant sections, headings, and subheadings
-4. Ensure smooth transitions between key points
-5. Conclude with a strong summary or call-to-action
+${args.settings.customPrompt ? `Extra instructions from the user:\n${args.settings.customPrompt}` : ''}`
 
-Please generate a well-structured article that incorporates all the key points while maintaining the specified tone and angle.`
+    const { threadId } = await articleAgent.createThread(ctx, {
+      userId: identity.subject,
+    })
 
-    // TODO: Integrate with your preferred AI service (OpenAI, Anthropic, etc.)
-    // For now, returning a placeholder
-    const generatedContent =
-      'Implementation needed: Connect to your preferred AI service'
+    const response = await articleAgent.generateText(
+      ctx,
+      {
+        threadId,
+      },
+      { prompt: basePrompt, stopWhen: stepCountIs(3) }
+    )
+    const generatedContent = response.text
 
-    // Update the article with generated content
-    await ctx.db.patch(args.articleId, {
+    await ctx.runMutation(api.articles.updateArticle, {
+      articleId: args.articleId,
+      settings: args.settings,
       generatedContent,
-      status: 'completed' as const,
     })
 
     return generatedContent

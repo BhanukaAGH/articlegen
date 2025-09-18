@@ -2,15 +2,12 @@
 
 import { useState } from 'react'
 import { UserButton } from '@clerk/nextjs'
-import { Plus } from 'lucide-react'
-import {
-  useAction,
-  useMutation,
-  usePaginatedQuery,
-  useQuery,
-} from 'convex/react'
+import { CopyIcon, Download, Plus } from 'lucide-react'
+import { useAction, usePaginatedQuery, useQuery } from 'convex/react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 import { Button } from '@/components/ui/button'
 import { ArticleTitleForm } from '../components/article-title-form'
@@ -42,9 +39,10 @@ export const ArticleIdView = () => {
   const [articleLength, setArticleLength] = useState<string>('')
   const [articleTone, setArticleTone] = useState<string>('')
   const [articleAngle, setArticleAngle] = useState<string>('')
+  const [generatedArticle, setGeneratedArticle] = useState<string | null>(null)
 
   const extractKeyPointsAction = useAction(api.chat.extractKeyPoints)
-  const generateArticle = useMutation(api.articles.generateArticle)
+  const generateArticleAction = useAction(api.articles.generateArticle)
 
   const handleExtractKeyPoints = async () => {
     setIsExtracting(true)
@@ -52,7 +50,6 @@ export const ArticleIdView = () => {
       const points = await extractKeyPointsAction({
         articleId: articleId as Id<'articles'>,
       })
-      console.log(points)
 
       setKeyPoints(points)
     } catch (error) {
@@ -67,7 +64,7 @@ export const ArticleIdView = () => {
 
     setIsGenerating(true)
     try {
-      const article = await generateArticle({
+      const article = await generateArticleAction({
         articleId: articleId as Id<'articles'>,
         keyPoints,
         settings: {
@@ -77,8 +74,8 @@ export const ArticleIdView = () => {
         },
       })
 
-      // Handle the generated article - you might want to update the UI or store it
-      console.log('Generated article:', article)
+      // Show generated article in the middle panel
+      setGeneratedArticle(article)
     } catch (error) {
       console.error('Failed to generate article', error)
     } finally {
@@ -124,7 +121,7 @@ export const ArticleIdView = () => {
         </header>
 
         {/* Main Content */}
-        <main className='px-6 py-3 flex gap-4 h-[calc(100vh-64px)]'>
+        <main className='px-6 py-3 flex gap-4 h-[calc(100vh-64px)] min-h-0'>
           {/* Sources Panel */}
           <div className='w-[300px] bg-slate-900 border border-slate-800 rounded-lg p-4'>
             <div className='flex items-center justify-between mb-4'>
@@ -148,12 +145,35 @@ export const ArticleIdView = () => {
           </div>
 
           {/* Chat Panel */}
-          <div className='flex-1 bg-slate-900 border border-slate-800 rounded-lg p-4'>
-            {keyPoints ? (
-              <div>
-                <h2 className='text-xl font-semibold mb-4'>Key Points</h2>
-                <div className='text-slate-300 whitespace-pre-wrap'>
-                  {keyPoints}
+          <div className='flex-1 min-h-0 bg-slate-900 border border-slate-800 rounded-lg p-4 flex flex-col'>
+            {generatedArticle ? (
+              <div className='flex h-full flex-col min-h-0'>
+                <div className='flex items-center justify-between'>
+                  <h2 className='text-xl font-semibold'>Generated Article</h2>
+                  <div className='flex items-center gap-2'>
+                    <Button size='sm'>
+                      <CopyIcon className='' />
+                      Copy
+                    </Button>
+                    <Button>
+                      <Download />
+                      Download
+                    </Button>
+                  </div>
+                </div>
+                <div className='mt-4 prose prose-invert max-w-none text-slate-300 overflow-y-auto flex-1 whitespace-pre-wrap'>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {generatedArticle}
+                  </ReactMarkdown>
+                </div>
+              </div>
+            ) : keyPoints ? (
+              <div className='flex h-full flex-col min-h-0'>
+                <h2 className='text-xl font-semibold'>Key Points</h2>
+                <div className='mt-4 prose prose-invert max-w-none text-slate-300 overflow-y-auto flex-1 whitespace-pre-wrap'>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {keyPoints}
+                  </ReactMarkdown>
                 </div>
               </div>
             ) : isExtracting ? (

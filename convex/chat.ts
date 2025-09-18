@@ -2,6 +2,7 @@ import { ConvexError, v } from 'convex/values'
 import { action } from './_generated/server'
 
 import { articleAgent } from './ai/agents/articleAgent'
+import { stepCountIs } from '@convex-dev/agent'
 
 export const extractKeyPoints = action({
   args: {
@@ -21,7 +22,7 @@ export const extractKeyPoints = action({
       userId: identity.subject,
     })
 
-    await articleAgent.generateText(
+    const response = await articleAgent.generateText(
       ctx,
       { threadId },
       {
@@ -31,15 +32,7 @@ To do this, you MUST use the \`searchTool\` to explore the content of the source
 
 Based on your search results, identify and list the main facts, arguments, and data points that would be essential for an article. Present the output as a concise list of key points.`,
         experimental_context: { articleId: args.articleId },
-      }
-    )
-
-    const response = await articleAgent.generateText(
-      ctx,
-      { threadId },
-      {
-        prompt: `Given the previous discussion and extracted information, summarize only the most essential key points that should be included in an article. Focus on the core ideas and insights necessary for a comprehensive and informative article, avoiding repetition or less relevant details.`,
-        experimental_context: { articleId: args.articleId },
+        stopWhen: stepCountIs(3),
       }
     )
 
