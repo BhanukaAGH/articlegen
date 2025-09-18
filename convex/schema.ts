@@ -7,8 +7,9 @@ export default defineSchema({
     userId: v.string(),
     status: v.union(v.literal('draft'), v.literal('completed')),
     settings: v.object({
-      tone: v.optional(v.string()), // formal, conversational, professional
-      targetLength: v.optional(v.number()), // target word count
+      length: v.optional(v.string()), // short, medium, long
+      tone: v.optional(v.string()), // professional, casual, technical, conversational
+      angle: v.optional(v.string()), // problem-solution, expert-analysis, case-study, industry-trends
       customPrompt: v.optional(v.string()), // custom generation prompt
     }),
     generatedContent: v.optional(v.string()),

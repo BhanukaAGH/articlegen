@@ -3,7 +3,12 @@
 import { useState } from 'react'
 import { UserButton } from '@clerk/nextjs'
 import { Plus } from 'lucide-react'
-import { useAction, usePaginatedQuery, useQuery } from 'convex/react'
+import {
+  useAction,
+  useMutation,
+  usePaginatedQuery,
+  useQuery,
+} from 'convex/react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -33,7 +38,13 @@ export const ArticleIdView = () => {
 
   const [keyPoints, setKeyPoints] = useState<string | null>(null)
   const [isExtracting, setIsExtracting] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [articleLength, setArticleLength] = useState<string>('')
+  const [articleTone, setArticleTone] = useState<string>('')
+  const [articleAngle, setArticleAngle] = useState<string>('')
+
   const extractKeyPointsAction = useAction(api.chat.extractKeyPoints)
+  const generateArticle = useMutation(api.articles.generateArticle)
 
   const handleExtractKeyPoints = async () => {
     setIsExtracting(true)
@@ -48,6 +59,30 @@ export const ArticleIdView = () => {
       console.error('Failed to extract key points', error)
     } finally {
       setIsExtracting(false)
+    }
+  }
+
+  const handleGenerateArticle = async () => {
+    if (!keyPoints || !articleLength || !articleTone || !articleAngle) return
+
+    setIsGenerating(true)
+    try {
+      const article = await generateArticle({
+        articleId: articleId as Id<'articles'>,
+        keyPoints,
+        settings: {
+          length: articleLength,
+          tone: articleTone,
+          angle: articleAngle,
+        },
+      })
+
+      // Handle the generated article - you might want to update the UI or store it
+      console.log('Generated article:', article)
+    } catch (error) {
+      console.error('Failed to generate article', error)
+    } finally {
+      setIsGenerating(false)
     }
   }
 
@@ -165,13 +200,97 @@ export const ArticleIdView = () => {
               <h2 className='font-medium'>Settings</h2>
             </div>
 
-            <div className='flex flex-col flex-1'>{/* settings option */}</div>
+            <div className='flex flex-col flex-1 space-y-6'>
+              {/* Article Length */}
+              <div>
+                <h3 className='text-sm font-medium mb-3'>Article Length</h3>
+                <div className='grid grid-cols-3 gap-2'>
+                  {['Short', 'Medium', 'Long'].map((length) => (
+                    <Button
+                      key={length}
+                      variant='outline'
+                      size='sm'
+                      className={`w-full ${
+                        articleLength === length.toLowerCase()
+                          ? 'bg-slate-800 border-slate-600 text-white hover:bg-slate-700'
+                          : 'border-slate-700 bg-slate-900 text-white hover:bg-slate-800'
+                      }`}
+                      onClick={() => setArticleLength(length.toLowerCase())}
+                    >
+                      {length}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Article Tone */}
+              <div>
+                <h3 className='text-sm font-medium mb-3'>Tone</h3>
+                <div className='grid grid-cols-2 gap-2'>
+                  {[
+                    'Professional',
+                    'Casual',
+                    'Technical',
+                    'Conversational',
+                  ].map((tone) => (
+                    <Button
+                      key={tone}
+                      variant='outline'
+                      size='sm'
+                      className={`w-full ${
+                        articleTone === tone.toLowerCase()
+                          ? 'bg-slate-800 border-slate-600 text-white hover:bg-slate-700'
+                          : 'border-slate-700 bg-slate-900 text-white hover:bg-slate-800'
+                      }`}
+                      onClick={() => setArticleTone(tone.toLowerCase())}
+                    >
+                      {tone}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Article Angle */}
+              <div>
+                <h3 className='text-sm font-medium mb-3'>Story Angle</h3>
+                <div className='grid grid-cols-1 gap-2'>
+                  {[
+                    'Problem-Solution',
+                    'Expert Analysis',
+                    'Case Study',
+                    'Industry Trends',
+                  ].map((angle) => (
+                    <Button
+                      key={angle}
+                      variant='outline'
+                      size='sm'
+                      className={`w-full ${
+                        articleAngle === angle.toLowerCase()
+                          ? 'bg-slate-800 border-slate-600 text-white hover:bg-slate-700'
+                          : 'border-slate-700 bg-slate-900 text-white hover:bg-slate-800'
+                      }`}
+                      onClick={() => setArticleAngle(angle.toLowerCase())}
+                    >
+                      {angle}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
 
             <Button
-              className='w-full bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 mt-4'
-              onClick={() => {}}
+              className='w-full  mt-4'
+              variant='secondary'
+              onClick={handleGenerateArticle}
+              disabled={
+                !keyPoints ||
+                !articleLength ||
+                !articleTone ||
+                !articleAngle ||
+                isGenerating
+              }
             >
-              Generate Article
+              {isGenerating ? 'Generating...' : 'Generate Article'}
             </Button>
           </div>
         </main>
