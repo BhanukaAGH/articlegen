@@ -1,12 +1,13 @@
 import { z } from 'zod'
+import { createTool } from '@convex-dev/agent'
 import { generateText } from 'ai'
 import { openai } from '@ai-sdk/openai'
-import { createTool } from '@convex-dev/agent'
-
 import rag from '../rag'
-
 import { SEARCH_INTERPRETER_PROMPT } from '../constants'
-import { articleAgent } from '../agents/articleAgent'
+
+function namespaceFor(identitySubject: string, articleId: string) {
+  return `${identitySubject}:${articleId}`
+}
 
 export const search = createTool({
   description:
@@ -14,13 +15,15 @@ export const search = createTool({
   args: z.object({
     query: z.string().describe('The search query to find relevant information'),
   }),
-  handler: async (ctx, args) => {
-    if (!ctx.threadId) {
-      return 'Missing thread Id'
-    }
+  handler: async (ctx, args, options) => {
+    const identity = await ctx.auth.getUserIdentity()
 
     const searchResult = await rag.search(ctx, {
-      namespace: ctx.threadId,
+      namespace: namespaceFor(
+        identity!.subject,
+        (options.experimental_context as unknown as { articleId: string })
+          .articleId
+      ),
       query: args.query,
       limit: 5,
     })
@@ -42,14 +45,6 @@ export const search = createTool({
         },
       ],
       model: openai.chat('gpt-4o-mini'),
-    })
-
-    await articleAgent.saveMessage(ctx, {
-      threadId: ctx.threadId,
-      message: {
-        role: 'assistant',
-        content: response.text,
-      },
     })
 
     return response.text

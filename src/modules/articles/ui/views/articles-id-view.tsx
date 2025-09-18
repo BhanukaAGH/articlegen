@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import { UserButton } from '@clerk/nextjs'
-import { Clipboard, File, Plus } from 'lucide-react'
-import { usePaginatedQuery, useQuery } from 'convex/react'
+import { Plus } from 'lucide-react'
+import { useAction, usePaginatedQuery, useQuery } from 'convex/react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -12,7 +12,7 @@ import { ArticleTitleForm } from '../components/article-title-form'
 import { SourceUploadDialog } from '../components/source-upload-dialog'
 import { api } from 'convex/_generated/api'
 import { Id } from 'convex/_generated/dataModel'
-import Image from 'next/image'
+import { SourcesList } from '../components/source-list'
 
 export const ArticleIdView = () => {
   const { articleId } = useParams()
@@ -20,6 +20,36 @@ export const ArticleIdView = () => {
     id: articleId as Id<'articles'>,
   })
   const [sourceDialogOpen, setSourceDialogOpen] = useState(false)
+
+  const {
+    results: sources,
+    status,
+    loadMore,
+  } = usePaginatedQuery(
+    api.files.list,
+    { articleId: articleId as Id<'articles'> },
+    { initialNumItems: 10 }
+  )
+
+  const [keyPoints, setKeyPoints] = useState<string | null>(null)
+  const [isExtracting, setIsExtracting] = useState(false)
+  const extractKeyPointsAction = useAction(api.chat.extractKeyPoints)
+
+  const handleExtractKeyPoints = async () => {
+    setIsExtracting(true)
+    try {
+      const points = await extractKeyPointsAction({
+        articleId: articleId as Id<'articles'>,
+      })
+      console.log(points)
+
+      setKeyPoints(points)
+    } catch (error) {
+      console.error('Failed to extract key points', error)
+    } finally {
+      setIsExtracting(false)
+    }
+  }
 
   return (
     <>
@@ -75,24 +105,58 @@ export const ArticleIdView = () => {
                 Add
               </Button>
             </div>
-            <SourcesList articleId={articleId as Id<'articles'>} />
+            <SourcesList
+              sources={sources}
+              status={status}
+              loadMore={loadMore}
+            />
           </div>
 
           {/* Chat Panel */}
           <div className='flex-1 bg-slate-900 border border-slate-800 rounded-lg p-4'>
-            <div className='flex items-center justify-center h-full'>
-              <div className='text-center'>
-                <h3 className='text-lg font-medium mb-2'>
-                  Add a source to get started
-                </h3>
-                <Button
-                  variant='secondary'
-                  onClick={() => setSourceDialogOpen(true)}
-                >
-                  Upload a source
-                </Button>
+            {keyPoints ? (
+              <div>
+                <h2 className='text-xl font-semibold mb-4'>Key Points</h2>
+                <div className='text-slate-300 whitespace-pre-wrap'>
+                  {keyPoints}
+                </div>
               </div>
-            </div>
+            ) : isExtracting ? (
+              <div className='flex items-center justify-center h-full'>
+                <div className='text-center'>
+                  <p>Extracting key points...</p>
+                </div>
+              </div>
+            ) : sources && sources.length > 0 ? (
+              <div className='flex items-center justify-center h-full'>
+                <div className='text-center'>
+                  <h3 className='text-lg font-medium mb-2'>
+                    Ready to extract key points
+                  </h3>
+                  <Button
+                    variant='secondary'
+                    onClick={handleExtractKeyPoints}
+                    disabled={isExtracting}
+                  >
+                    {isExtracting ? 'Extracting...' : 'Extract Key Points'}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className='flex items-center justify-center h-full'>
+                <div className='text-center'>
+                  <h3 className='text-lg font-medium mb-2'>
+                    Add a source to get started
+                  </h3>
+                  <Button
+                    variant='secondary'
+                    onClick={() => setSourceDialogOpen(true)}
+                  >
+                    Upload a source
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Settings Panel */}
@@ -113,76 +177,5 @@ export const ArticleIdView = () => {
         </main>
       </div>
     </>
-  )
-}
-
-function SourcesList({ articleId }: { articleId: Id<'articles'> }) {
-  const { results, status, loadMore } = usePaginatedQuery(
-    api.files.list,
-    { articleId },
-    { initialNumItems: 10 }
-  )
-
-  if (status === 'LoadingFirstPage') {
-    return (
-      <p className='text-slate-400 text-sm text-center mt-4'>
-        Loading sources…
-      </p>
-    )
-  }
-
-  if (!results.length) {
-    return (
-      <>
-        <p className='text-slate-400 text-sm text-center mt-20'>
-          Saved sources will appear here
-        </p>
-        <p className='text-slate-500 text-xs text-center mt-2'>
-          Click Add source above to add PDFs, websites, text, videos or audio
-          files.
-        </p>
-      </>
-    )
-  }
-
-  return (
-    <div className='space-y-2'>
-      <div className='space-y-2'>
-        {results.map((file) => (
-          <div
-            key={file.id}
-            className='flex items-center gap-3 rounded border border-slate-800 bg-slate-800/40 px-3 py-2'
-          >
-            <div className='min-w-0'>
-              <div className='flex items-center gap-2'>
-                {file.type.includes('pdf') ? (
-                  <Image
-                    alt='pdf icon'
-                    src={'/pdf.png'}
-                    width={20}
-                    height={20}
-                  />
-                ) : file.type.includes('text') ? (
-                  <Clipboard className='size-5 text-slate-200' />
-                ) : (
-                  <File className='size-5 text-slate-200' />
-                )}
-                <p className='truncate text-sm text-slate-200'>{file.name}</p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-      {status !== 'Exhausted' && (
-        <Button
-          variant='outline'
-          size='sm'
-          className='w-full border-slate-700 text-slate-200'
-          onClick={() => loadMore(10)}
-        >
-          Load more
-        </Button>
-      )}
-    </div>
   )
 }

@@ -13,6 +13,7 @@ import type * as ai_constants from "../ai/constants.js";
 import type * as ai_rag from "../ai/rag.js";
 import type * as ai_tools_search from "../ai/tools/search.js";
 import type * as articles from "../articles.js";
+import type * as chat from "../chat.js";
 import type * as files from "../files.js";
 import type * as lib_extractTextContent from "../lib/extractTextContent.js";
 
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   "ai/rag": typeof ai_rag;
   "ai/tools/search": typeof ai_tools_search;
   articles: typeof articles;
+  chat: typeof chat;
   files: typeof files;
   "lib/extractTextContent": typeof lib_extractTextContent;
 }>;
