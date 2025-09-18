@@ -1,21 +1,22 @@
 'use client'
 
 import { UserButton } from '@clerk/nextjs'
-import { ChevronDown, Grid3X3, List, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
+import { useQuery } from 'convex/react'
+import { useParams } from 'next/navigation'
 
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { ArticleCard } from '../components/article-card'
+import { ArticleTitleForm } from '../components/article-title-form'
 import { SourceUploadDialog } from '../components/source-upload-dialog'
 import { useState } from 'react'
+import { api } from 'convex/_generated/api'
+import { Id } from 'convex/_generated/dataModel'
 
 export const ArticleIdView = () => {
+  const { articleId } = useParams()
+  const article = useQuery(api.articles.getOne, {
+    id: articleId as Id<'articles'>,
+  })
   const [sourceDialogOpen, setSourceDialogOpen] = useState(false)
 
   return (
@@ -31,7 +32,14 @@ export const ArticleIdView = () => {
             <div className='w-6 h-6 bg-white rounded flex items-center justify-center'>
               <div className='w-3 h-3 bg-slate-950 rounded'></div>
             </div>
-            <h1 className='text-xl font-medium'>ArticleGen</h1>
+            {article ? (
+              <ArticleTitleForm
+                articleId={article._id}
+                initialTitle={article.title}
+              />
+            ) : (
+              <h1 className='text-xl font-medium cursor-pointer'>ArticleGen</h1>
+            )}
           </div>
 
           <UserButton

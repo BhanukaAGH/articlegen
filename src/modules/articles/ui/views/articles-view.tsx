@@ -3,6 +3,9 @@
 import { UserButton } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import { ChevronDown, Grid3X3, List, Plus } from 'lucide-react'
+import { useMutation, usePaginatedQuery } from 'convex/react'
+import { useState } from 'react'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -12,13 +15,37 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ArticleCard } from '../components/article-card'
+import { ArticleCard, ArticleCardSkeleton } from '../components/article-card'
+import { api } from 'convex/_generated/api'
+import { Loading } from '@/components/loading'
 
 export const ArticlesView = () => {
   const router = useRouter()
+  const [isCreating, setIsCreating] = useState(false)
 
-  const handleCreateNew = () => {
-    router.push('/articles/new')
+  const articles = usePaginatedQuery(
+    api.articles.list,
+    {},
+    { initialNumItems: 100 }
+  )
+
+  const createArticle = useMutation(api.articles.create)
+
+  const handleCreateNew = async () => {
+    setIsCreating(true)
+    try {
+      const articleId = await createArticle()
+      toast.success('New article created!')
+      router.push(`/articles/${articleId}`)
+    } catch (error) {
+      toast.error('Failed to create article.')
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  if (isCreating) {
+    return <Loading />
   }
 
   return (
@@ -92,9 +119,10 @@ export const ArticlesView = () => {
             <Button
               className='bg-white text-slate-900 hover:bg-slate-100 text-sm'
               onClick={handleCreateNew}
+              disabled={isCreating}
             >
               <Plus className='w-4 h-4 mr-2' />
-              Create new
+              {isCreating ? 'Creating...' : 'Create new'}
             </Button>
           </div>
         </div>
@@ -102,7 +130,10 @@ export const ArticlesView = () => {
         {/* Article Grid */}
         <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4'>
           {/* Create New Article Card */}
-          <Card className='bg-slate-900 border-slate-800 hover:bg-slate-800 transition-colors cursor-pointer group'>
+          <Card
+            className='bg-slate-900 border-slate-800 hover:bg-slate-800 transition-colors cursor-pointer group'
+            onClick={handleCreateNew}
+          >
             <div className='p-6 flex flex-col items-center justify-center h-40'>
               <div className='w-12 h-12 bg-slate-700 rounded-full flex items-center justify-center mb-3 group-hover:bg-slate-600 transition-colors'>
                 <Plus className='w-5 h-5 text-slate-300' />
@@ -113,8 +144,14 @@ export const ArticlesView = () => {
             </div>
           </Card>
 
-          <ArticleCard />
-          <ArticleCard />
+          {articles.status === 'LoadingFirstPage' &&
+            Array(5)
+              .fill(0)
+              .map((_, index) => <ArticleCardSkeleton key={index} />)}
+
+          {articles.results.map((article) => (
+            <ArticleCard key={article._id} article={article} />
+          ))}
         </div>
       </main>
     </div>
