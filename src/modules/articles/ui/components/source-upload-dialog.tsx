@@ -8,33 +8,86 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  FileUp,
-  X,
-  Link as LinkIcon,
-  Youtube,
-  ArrowLeft,
-  Clipboard,
-} from 'lucide-react'
+import { Link as LinkIcon, Youtube, ArrowLeft, Clipboard } from 'lucide-react'
 import { useState } from 'react'
+import { useAction } from 'convex/react'
+import { api } from 'convex/_generated/api'
+import { Id } from 'convex/_generated/dataModel'
+import {
+  Dropzone,
+  DropzoneContent,
+  DropzoneEmptyState,
+} from '@/components/dropzone'
 
 type InputType = 'default' | 'link' | 'youtube' | 'text'
 
 interface SourceUploadDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  articleId: Id<'articles'>
 }
 
 export const SourceUploadDialog = ({
   open,
   onOpenChange,
+  articleId,
 }: SourceUploadDialogProps) => {
   const [inputType, setInputType] = useState<InputType>('default')
   const [inputValue, setInputValue] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [uploadedFiles, setUploadedFiles] = useState<File[] | undefined>()
+
+  // const addWebUrl = useAction(api.files.addWebUrl)
+  // const addYouTube = useAction(api.files.addYouTube)
+  // const addText = useAction(api.files.addText)
+  const addFile = useAction(api.files.addFile)
 
   const handleBack = () => {
     setInputType('default')
     setInputValue('')
+  }
+
+  const handleFileDrop = async (acceptedFiles: File[]) => {
+    const file = acceptedFiles?.[0]
+    if (!file) return
+    setIsSubmitting(true)
+    setUploadedFiles(acceptedFiles)
+    try {
+      const mt = file.type || 'text/plain'
+      const sourceType: 'pdf' | 'text' = mt.includes('pdf') ? 'pdf' : 'text'
+      await addFile({
+        filename: file.name,
+        mimeType: mt,
+        bytes: await file.arrayBuffer(),
+        articleId,
+        sourceType,
+      })
+      onOpenChange(false)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleSubmit = async () => {
+    if (!inputValue) return
+    setIsSubmitting(true)
+    try {
+      // if (inputType === 'link') {
+      //   await addWebUrl({ url: inputValue, articleId })
+      // } else if (inputType === 'youtube') {
+      //   await addYouTube({ url: inputValue, articleId })
+      // } else if (inputType === 'text') {
+      //   await addText({ text: inputValue, articleId })
+      // }
+      onOpenChange(false)
+      handleBack()
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -81,27 +134,20 @@ export const SourceUploadDialog = ({
         <div className='mt-4'>
           {inputType === 'default' ? (
             <>
-              <div className='flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-700 bg-slate-800/50 p-12'>
-                <FileUp className='h-10 w-10 text-slate-400' />
-                <div className='mt-4 text-center'>
-                  <p className='text-sm font-medium text-slate-200'>
-                    Upload sources
-                  </p>
-                  <p className='mt-1 text-xs text-slate-400'>
-                    Drag and drop or{' '}
-                    <button
-                      className='text-blue-400 hover:text-blue-300'
-                      onClick={() => {}}
-                    >
-                      choose file
-                    </button>{' '}
-                    to upload
-                  </p>
-                </div>
-                <p className='mt-4 text-xs text-slate-500'>
-                  Supported file types: PDF, txt, Markdown, Audio (e.g. mp3)
-                </p>
-              </div>
+              <Dropzone
+                accept={{
+                  'application/pdf': ['.pdf'],
+                  'text/plain': ['.txt'],
+                }}
+                disabled={isSubmitting}
+                maxFiles={1}
+                onDrop={handleFileDrop}
+                src={uploadedFiles}
+                className='rounded-lg border border-dashed border-slate-700 bg-slate-800/50 p-12'
+              >
+                <DropzoneEmptyState />
+                <DropzoneContent />
+              </Dropzone>
 
               <div className='mt-8 grid grid-cols-3 gap-4'>
                 <Button
@@ -140,12 +186,8 @@ export const SourceUploadDialog = ({
               />
               <Button
                 className='w-full bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50'
-                onClick={() => {
-                  // Handle text submission
-                  setInputType('default')
-                  setInputValue('')
-                }}
-                disabled={!inputValue}
+                onClick={handleSubmit}
+                disabled={!inputValue || isSubmitting}
               >
                 Insert
               </Button>
@@ -162,12 +204,8 @@ export const SourceUploadDialog = ({
               />
               <Button
                 className='w-full bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50'
-                onClick={() => {
-                  // Handle URL submission
-                  setInputType('default')
-                  setInputValue('')
-                }}
-                disabled={!inputValue}
+                onClick={handleSubmit}
+                disabled={!inputValue || isSubmitting}
               >
                 Insert
               </Button>

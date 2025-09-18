@@ -6,6 +6,7 @@ import { ChevronDown, Grid3X3, List, Plus } from 'lucide-react'
 import { useMutation, usePaginatedQuery } from 'convex/react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import Link from 'next/link'
 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -53,9 +54,11 @@ export const ArticlesView = () => {
       {/* Header */}
       <header className='flex items-center justify-between px-6 py-3 sticky top-0'>
         <div className=' flex items-center gap-3'>
-          <div className='w-6 h-6 bg-white rounded flex items-center justify-center'>
-            <div className='w-3 h-3 bg-slate-950 rounded'></div>
-          </div>
+          <Link href='/articles'>
+            <div className='w-6 h-6 bg-white rounded flex items-center justify-center'>
+              <div className='w-3 h-3 bg-slate-950 rounded' />
+            </div>
+          </Link>
           <h1 className='text-xl font-medium'>ArticleGen</h1>
         </div>
 

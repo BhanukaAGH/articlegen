@@ -8,7 +8,13 @@
  * @module
  */
 
+import type * as ai_agents_articleAgent from "../ai/agents/articleAgent.js";
+import type * as ai_constants from "../ai/constants.js";
+import type * as ai_rag from "../ai/rag.js";
+import type * as ai_tools_search from "../ai/tools/search.js";
 import type * as articles from "../articles.js";
+import type * as files from "../files.js";
+import type * as lib_extractTextContent from "../lib/extractTextContent.js";
 
 import type {
   ApiFromModules,
@@ -25,7 +31,13 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  "ai/agents/articleAgent": typeof ai_agents_articleAgent;
+  "ai/constants": typeof ai_constants;
+  "ai/rag": typeof ai_rag;
+  "ai/tools/search": typeof ai_tools_search;
   articles: typeof articles;
+  files: typeof files;
+  "lib/extractTextContent": typeof lib_extractTextContent;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
 
