@@ -8,8 +8,10 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { ArticleTitleForm } from '../components/article-title-form'
 import { SourceUploadDialog } from '../components/source-upload-dialog'
 import { api } from 'convex/_generated/api'
@@ -83,6 +85,15 @@ export const ArticleIdView = () => {
     }
   }
 
+  const handleCopyToClipboard = () => {
+    if (generatedArticle) {
+      navigator.clipboard.writeText(generatedArticle)
+      toast.success('Article copied to clipboard!')
+    }
+  }
+
+  const handleDownloadAsPdf = async () => {}
+
   return (
     <>
       <SourceUploadDialog
@@ -151,29 +162,33 @@ export const ArticleIdView = () => {
                 <div className='flex items-center justify-between'>
                   <h2 className='text-xl font-semibold'>Generated Article</h2>
                   <div className='flex items-center gap-2'>
-                    <Button size='sm'>
-                      <CopyIcon className='' />
+                    <Button size='sm' onClick={handleCopyToClipboard}>
+                      <CopyIcon />
                       Copy
                     </Button>
-                    <Button>
+                    <Button onClick={handleDownloadAsPdf}>
                       <Download />
                       Download
                     </Button>
                   </div>
                 </div>
-                <div className='mt-4 prose prose-invert max-w-none text-slate-300 overflow-y-auto flex-1 whitespace-pre-wrap'>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {generatedArticle}
-                  </ReactMarkdown>
+                <div className='mt-4 prose prose-invert max-w-none text-slate-300 flex-1 whitespace-pre-wrap h-[calc(100%-4rem)]'>
+                  <ScrollArea className='h-full w-full overflow-auto'>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {generatedArticle}
+                    </ReactMarkdown>
+                  </ScrollArea>
                 </div>
               </div>
             ) : keyPoints ? (
               <div className='flex h-full flex-col min-h-0'>
                 <h2 className='text-xl font-semibold'>Key Points</h2>
-                <div className='mt-4 prose prose-invert max-w-none text-slate-300 overflow-y-auto flex-1 whitespace-pre-wrap'>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {keyPoints}
-                  </ReactMarkdown>
+                <div className='mt-4 prose prose-invert max-w-none text-slate-300 flex-1 whitespace-pre-wrap h-[calc(100%-4rem)]'>
+                  <ScrollArea className='h-full w-full overflow-auto'>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {keyPoints}
+                    </ReactMarkdown>
+                  </ScrollArea>
                 </div>
               </div>
             ) : isExtracting ? (
@@ -230,7 +245,7 @@ export const ArticleIdView = () => {
                       key={length}
                       variant='outline'
                       size='sm'
-                      className={`w-full ${
+                      className={`w-full hover:text-muted ${
                         articleLength === length.toLowerCase()
                           ? 'bg-slate-800 border-slate-600 text-white hover:bg-slate-700'
                           : 'border-slate-700 bg-slate-900 text-white hover:bg-slate-800'
@@ -257,7 +272,7 @@ export const ArticleIdView = () => {
                       key={tone}
                       variant='outline'
                       size='sm'
-                      className={`w-full ${
+                      className={`w-full hover:text-muted ${
                         articleTone === tone.toLowerCase()
                           ? 'bg-slate-800 border-slate-600 text-white hover:bg-slate-700'
                           : 'border-slate-700 bg-slate-900 text-white hover:bg-slate-800'
@@ -284,7 +299,7 @@ export const ArticleIdView = () => {
                       key={angle}
                       variant='outline'
                       size='sm'
-                      className={`w-full ${
+                      className={`w-full hover:text-muted ${
                         articleAngle === angle.toLowerCase()
                           ? 'bg-slate-800 border-slate-600 text-white hover:bg-slate-700'
                           : 'border-slate-700 bg-slate-900 text-white hover:bg-slate-800'
