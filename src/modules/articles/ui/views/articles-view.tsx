@@ -38,7 +38,7 @@ export const ArticlesView = () => {
       const articleId = await createArticle()
       toast.success('New article created!')
       router.push(`/articles/${articleId}`)
-    } catch (error) {
+    } catch {
       toast.error('Failed to create article.')
     } finally {
       setIsCreating(false)
